@@ -13,9 +13,9 @@ import (
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
 	models "github.com/firecracker-microvm/firecracker-go-sdk/client/models"
 
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/cnihelper"
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/config"
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/snapshot"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/cnihelper"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/config"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/snapshot"
 )
 
 type Launcher struct {

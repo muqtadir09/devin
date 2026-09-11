@@ -1,4 +1,4 @@
-module github.com/muqtadir09/devin/apps/firecracker-host
+module github.com/muqtadir09/devin/apps/firecracker
 
 go 1.22.0
 

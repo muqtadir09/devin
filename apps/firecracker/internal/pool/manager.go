@@ -10,10 +10,10 @@ import (
 
 	"github.com/rs/xid"
 
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/cnihelper"
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/config"
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/snapshot"
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/vm"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/cnihelper"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/config"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/snapshot"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/vm"
 )
 
 type VMRecord struct {

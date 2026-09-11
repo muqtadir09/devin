@@ -12,7 +12,7 @@ import (
 
 	firecracker "github.com/firecracker-microvm/firecracker-go-sdk"
 
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/cnihelper"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/cnihelper"
 )
 
 type Instance struct {

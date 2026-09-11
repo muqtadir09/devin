@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/muqtadir09/devin/apps/firecracker-host/internal/cnihelper"
+	"github.com/muqtadir09/devin/apps/firecracker/internal/cnihelper"
 )
 
 type output struct {
