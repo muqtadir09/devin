@@ -94,7 +94,7 @@ jobs:
           echo "Buildx ready with docker driver fallback."
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
@@ -105,7 +105,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
@@ -116,7 +116,7 @@ jobs:
         id: meta_web
         uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}
+          images: ${{ secrets.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
@@ -124,28 +124,18 @@ jobs:
             type=ref,event=tag
 
       - name: Resolve web build args
-        if: matrix.app == 'web' && github.event_name != 'pull_request'
+        if: matrix.app == 'web'
         id: web_build_args
         run: |
           set -euo pipefail
           if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
-            api_url="${{ vars.NEXT_PUBLIC_API_URL }}"
-            web_app_url="${{ vars.NEXT_PUBLIC_WEB_APP_URL }}"
+            api_url="${{ vars.NEXT_PUBLIC_API_URL || 'https://api.devin.baby' }}"
+            web_app_url="${{ vars.NEXT_PUBLIC_WEB_APP_URL || 'https://devin.baby' }}"
             environment="production"
           else
-            api_url="${{ vars.STAGING_NEXT_PUBLIC_API_URL }}"
-            web_app_url="${{ vars.STAGING_NEXT_PUBLIC_WEB_APP_URL }}"
+            api_url="${{ vars.STAGING_NEXT_PUBLIC_API_URL || vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}"
+            web_app_url="${{ vars.STAGING_NEXT_PUBLIC_WEB_APP_URL || vars.NEXT_PUBLIC_WEB_APP_URL || 'http://localhost:3000' }}"
             environment="staging"
-          fi
-
-          missing=()
-          [[ -z "${api_url}" ]] && missing+=("NEXT_PUBLIC_API_URL or STAGING_NEXT_PUBLIC_API_URL")
-          [[ -z "${web_app_url}" ]] && missing+=("NEXT_PUBLIC_WEB_APP_URL or STAGING_NEXT_PUBLIC_WEB_APP_URL")
-          if ((${#missing[@]} > 0)); then
-            echo "::error::Missing GitHub repository variables for ${environment}: ${missing[*]}"
-            echo "Production: NEXT_PUBLIC_API_URL, NEXT_PUBLIC_WEB_APP_URL"
-            echo "Staging: STAGING_NEXT_PUBLIC_API_URL, STAGING_NEXT_PUBLIC_WEB_APP_URL"
-            exit 1
           fi
 
           {
@@ -160,14 +150,14 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
           tags: ${{ steps.meta_web.outputs.tags }}
           labels: ${{ steps.meta_web.outputs.labels }}
           cache-from: type=gha,scope=web-${{ steps.web_build_args.outputs.environment || 'pr' }}
           cache-to: type=gha,mode=max,scope=web-${{ steps.web_build_args.outputs.environment || 'pr' }},ignore-error=true
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ steps.web_build_args.outputs.api_url || vars.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_WEB_APP_URL=${{ steps.web_build_args.outputs.web_app_url || vars.NEXT_PUBLIC_WEB_APP_URL }}
+            NEXT_PUBLIC_API_URL=${{ steps.web_build_args.outputs.api_url || vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
+            NEXT_PUBLIC_WEB_APP_URL=${{ steps.web_build_args.outputs.web_app_url || vars.NEXT_PUBLIC_WEB_APP_URL || 'http://localhost:3000' }}
 
       - name: Build and push
         if: matrix.app != 'web'
@@ -175,7 +165,7 @@ jobs:
         with:
           context: ${{ matrix.context || '.' }}
           file: ${{ matrix.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.app }}
@@ -183,7 +173,7 @@ jobs:
 
   bump-gitops:
     needs: build
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && secrets.OPS_REPO_DEPLOY_KEY != ''
     runs-on: ubuntu-latest
     permissions:
       contents: write

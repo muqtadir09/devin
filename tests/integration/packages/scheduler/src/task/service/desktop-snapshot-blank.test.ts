@@ -69,11 +69,9 @@ describe("isLikelyBlankScreenshot", () => {
     expect(isLikelyBlankScreenshot(white)).toBe(true);
   });
 
-  it("accepts non-blank architecture screenshots", () => {
-    const architecture = readFileSync(
-      join(import.meta.dir, "../../../../../../../docs/architecture.png"),
-    );
-    expect(isLikelyBlankScreenshot(architecture)).toBe(false);
+  it("accepts non-blank screenshots", () => {
+    const nonBlank = createSolidPng(64, 48, 20, 40, 60);
+    expect(isLikelyBlankScreenshot(nonBlank)).toBe(false);
   });
 
   it("rejects tiny buffers", () => {

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "go run ./cmd/firecracker",
-    "build": "go build -o bin/firecracker ./cmd/firecracker",
+    "build": "GOOS=linux go build -o bin/firecracker ./cmd/firecracker",
     "start": "./bin/firecracker"
   }
 }

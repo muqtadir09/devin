@@ -71,3 +71,27 @@ jobs:
       - name: Vet sandbox API
         working-directory: packages/sandbox
         run: go vet ./...
+
+  typescript:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.2.3
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint
+        run: bun run lint
+
+      - name: Check types
+        run: bun run check-types
+
+      - name: Run unit tests
+        working-directory: tests/integration
+        run: bun run test
