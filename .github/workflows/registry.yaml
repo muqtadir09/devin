@@ -21,6 +21,9 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
     strategy:
       fail-fast: false
       # Fewer parallel jobs reduces flaky "Failed to resolve action download info" on setup.
@@ -94,18 +97,18 @@ jobs:
           echo "Buildx ready with docker driver fallback."
 
       - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != ''
+        if: github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != ''
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ env.DOCKERHUB_USERNAME }}
+          password: ${{ env.DOCKERHUB_TOKEN }}
 
       - name: Docker metadata
         if: matrix.app != 'web'
         id: meta
         uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
+          images: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
@@ -116,7 +119,7 @@ jobs:
         id: meta_web
         uses: docker/metadata-action@369eb591f429131d6889c46b94e711f089e6ca96 # v5.6.1
         with:
-          images: ${{ secrets.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
+          images: ${{ env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_USERNAME || 'devin' }}/${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=,format=long
@@ -150,14 +153,14 @@ jobs:
         with:
           context: .
           file: ${{ matrix.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+          push: ${{ github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
           tags: ${{ steps.meta_web.outputs.tags }}
           labels: ${{ steps.meta_web.outputs.labels }}
           cache-from: type=gha,scope=web-${{ steps.web_build_args.outputs.environment || 'pr' }}
           cache-to: type=gha,mode=max,scope=web-${{ steps.web_build_args.outputs.environment || 'pr' }},ignore-error=true
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ steps.web_build_args.outputs.api_url || vars.NEXT_PUBLIC_API_URL || 'http://localhost:8080' }}
-            NEXT_PUBLIC_WEB_APP_URL=${{ steps.web_build_args.outputs.web_app_url || vars.NEXT_PUBLIC_WEB_APP_URL || 'http://localhost:3000' }}
+            NEXT_PUBLIC_API_URL=${{ steps.web_build_args.outputs.api_url }}
+            NEXT_PUBLIC_WEB_APP_URL=${{ steps.web_build_args.outputs.web_app_url }}
 
       - name: Build and push
         if: matrix.app != 'web'
@@ -165,7 +168,7 @@ jobs:
         with:
           context: ${{ matrix.context || '.' }}
           file: ${{ matrix.dockerfile }}
-          push: ${{ github.event_name != 'pull_request' && secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
+          push: ${{ github.event_name != 'pull_request' && env.DOCKERHUB_USERNAME != '' && env.DOCKERHUB_TOKEN != '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.app }}
@@ -173,12 +176,25 @@ jobs:
 
   bump-gitops:
     needs: build
-    if: github.event_name != 'pull_request' && secrets.OPS_REPO_DEPLOY_KEY != ''
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Check deploy key
+        id: check_key
+        env:
+          KEY: ${{ secrets.OPS_REPO_DEPLOY_KEY }}
+        run: |
+          if [[ -z "${KEY}" ]]; then
+            echo "has_key=false" >> "${GITHUB_OUTPUT}"
+            echo "OPS_REPO_DEPLOY_KEY secret not configured; skipping GitOps bump."
+          else
+            echo "has_key=true" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Resolve target overlay and image tag
+        if: steps.check_key.outputs.has_key == 'true'
         id: target
         run: |
           set -euo pipefail
@@ -199,6 +215,7 @@ jobs:
           } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout ops (GitOps) repo
+        if: steps.check_key.outputs.has_key == 'true'
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           repository: muqtadir09/ops
@@ -207,6 +224,7 @@ jobs:
           path: ops
 
       - name: Bump image SHA
+        if: steps.check_key.outputs.has_key == 'true'
         working-directory: ops
         run: |
           set -euo pipefail
@@ -222,6 +240,7 @@ jobs:
           git --no-pager diff -- "${OVERLAY}"
 
       - name: Commit and push as actions-user
+        if: steps.check_key.outputs.has_key == 'true'
         working-directory: ops
         run: |
           set -euo pipefail
