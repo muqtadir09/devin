@@ -5,14 +5,39 @@
 
 ## About
 
-**Devin** is an autonomous AI software engineer designed to execute the complete software development lifecycle inside isolated execution runtimes. You submit tasks, and Devin analyzes the problem, provisions an isolated sandbox (or microVM), plans the solution, writes clean code, runs terminal commands, executes tests, and persists results to git.
+**Devin** is an autonomous AI software engineer designed to execute the complete software development lifecycle inside secure, isolated execution environments. Unlike passive code-completion assistants that simply suggest code in an editor, Devin acts as an independent engineering teammate: it takes a high-level goal, provisions a dedicated sandbox microVM, explores codebases, formulates an execution plan, writes code, runs terminal commands, diagnoses build errors, executes tests, visually verifies web applications, and delivers ready-to-merge git commits.
+
+### The Problem Devin Solves
+Traditional AI coding tools are constrained to text generation inside the developer's IDE—they cannot compile code, run test suites, observe runtime errors, or interact with live browsers. Devin solves this by coupling advanced LLM reasoning with a real, isolated execution plane (**Devbox**):
+- **Full Execution Feedback Loop**: Devin doesn't guess if code works; it compiles the project, runs tests, inspects stdout/stderr, and self-corrects until all checks pass.
+- **Zero Host Risk**: All terminal commands, package installs, and builds happen inside sandboxed microVMs with dedicated virtualized networks, keeping your host system completely clean and secure.
+- **Multi-Modal Verification**: Equipped with a virtual desktop (Xvfb + VNC) and browser automation, Devin visually checks web UI output, inspects console logs, and validates rendering.
+
+### The Core Autonomous Loop
+```
+  1. Receive Task ──► 2. Classify Intent & Stack ──► 3. Provision Isolated Devbox
+                                                                  │
+  6. Git Commit & PR ◄── 5. Run Tests & Verify ◄── 4. Code & Build Loop
+```
+1. **Ingest & Intent Classification**: Evaluates incoming prompts. Conversational questions and small talk are answered immediately in-process (saving compute resources), while engineering requests proceed to execution.
+2. **Dynamic Stack Inference**: Infers project requirements (Next.js, Node.js, Go, Python, Rust) and restores a pre-baked golden snapshot in ~300ms.
+3. **Autonomous Planning**: Reads existing repository files, maps dependencies, and constructs an atomic step-by-step implementation strategy.
+4. **Execution & Self-Correction**: Modifies code, runs package managers (`bun`, `npm`, `cargo`, `go build`, `pip`), and iteratively fixes compiler or runtime errors.
+5. **Interactive & Visual Testing**: Verifies changes by launching servers, inspecting network responses, and capturing desktop screenshots via virtual X11/VNC display.
+6. **Delivery**: Formats code cleanly, runs git operations, and prepares structured commit trailers for review.
+
+### Primary Use Cases
+- **Greenfield Application Scaffolding**: Build complete, functional web apps, microservices, and CLI tools from scratch based on a single prompt.
+- **Bug Fixing & Issue Resolution**: Investigate GitHub issues, reproduce bugs with new tests, pinpoint root causes, and submit fixes.
+- **Feature Development & API Integration**: Add complex features, integrate third-party APIs, and write accompanying integration tests.
+- **Refactoring & Modernization**: Upgrade outdated dependencies, migrate legacy codebases, and improve test coverage across existing projects.
 
 ### Key Highlights
-- **Autonomous Reasoning & Planning**: Powered by the Brain harness (`@devin/brain`), Devin analyzes prompts, breaks down tasks, and selects appropriate tech stacks (`nextjs`, `node`, `go`, `python`, `rust`).
-- **Isolated Execution Plane (Devbox)**: Code execution is sandboxed inside lightweight Firecracker microVMs or containerized runtimes with custom supervisors, ensuring security and zero pollution of the host machine.
-- **Interactive Multi-Modal Interface**: Real-time streaming terminal, file tree explorer, interactive diff reviewer, and live desktop browser view via VNC.
+- **Autonomous Reasoning & Planning**: Powered by the Brain harness (`@devin/brain`), combining prompt analysis with a structured tool-calling loop.
+- **Isolated Execution Plane (Devbox)**: Sub-second MicroVM snapshot restores powered by Firecracker and CNI networking, with native fallbacks for local development.
+- **Real-Time Interactive UI**: Live streaming terminal, dynamic file tree, interactive diff viewer, and real-time virtual desktop browser via VNC.
 - **Enterprise-Grade Security**: Strict prompt injection and jailbreak defenses (`<untrusted>` wrappers) treating all external user inputs, tool outputs, and repo files as unprivileged data.
-- **Hybrid Deployment Models**: Can be run locally with zero-overhead dry-run mode, or scaled in production on AWS EKS with dedicated EC2 hardware-accelerated KVM execution hosts.
+- **Hybrid Deployment Models**: Runs seamlessly locally with zero-overhead dry-run mode, or scales to enterprise workloads on AWS EKS with dedicated EC2 KVM execution hosts.
 
 ---
 
