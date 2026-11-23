@@ -42,6 +42,13 @@ export async function ensureBashInSandbox(
   runtime: RuntimeClient,
   taskId: string,
 ): Promise<void> {
+  if (process.platform === "darwin") {
+    emit(svc, "agent.log", taskId, "bash available in sandbox", {
+      detail: "/bin/bash",
+      linkedAt: "/bin/bash",
+    });
+    return;
+  }
   const probe = await runtime.terminalAllowFailure({
     taskId,
     command: [

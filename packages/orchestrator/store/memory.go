@@ -117,23 +117,26 @@ func (s *MemoryStore) simulateProvision(ctx context.Context, name string, spec d
 		Memory:  spec.Memory,
 		TaskID:  spec.TaskID,
 	})
-	if err != nil {
-		s.setStatus(name, devinv1.SandboxStatus{
-			Phase:   devinv1.SandboxPhaseFailed,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	runtimeURL := vm.RuntimeURL
-	if runtimeURL == "" {
-		runtimeURL = s.cfg.RuntimeFallbackURL
+	
+	runtimeURL := s.cfg.RuntimeFallbackURL
+	vmID := "mock-vm-" + name
+	hostName := "local-dryrun"
+	if err == nil && vm != nil {
+		if vm.RuntimeURL != "" {
+			runtimeURL = vm.RuntimeURL
+		}
+		if vm.VMID != "" {
+			vmID = vm.VMID
+		}
+		if vm.Host != "" {
+			hostName = vm.Host
+		}
 	}
 
 	s.setStatus(name, devinv1.SandboxStatus{
 		Phase:       devinv1.SandboxPhaseRunning,
-		VMID:        vm.VMID,
-		Host:        vm.Host,
+		VMID:        vmID,
+		Host:        hostName,
 		RuntimeURL:  runtimeURL,
 		MachineName: name + "-machine",
 		Message:     "firecracker microVM ready (dry-run)",

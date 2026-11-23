@@ -26,9 +26,13 @@ func (s *Server) handleTerminal(w http.ResponseWriter, r *http.Request) {
 
 	workspace.EnsureDNS()
 	cwd := s.resolveCWD(req.CWD)
-	s.appendLog("terminal: " + req.Command)
+	cmd := req.Command
+	if s.workspace != "" && s.workspace != "/workspace" {
+		cmd = strings.ReplaceAll(cmd, "/workspace", s.workspace)
+	}
+	s.appendLog("terminal: " + cmd)
 
-	result, err := executil.RunGuest(r.Context(), cwd, req.Command, workspace.DevinProcessEnv(s.workspace), parseRequestEnv(r))
+	result, err := executil.RunGuest(r.Context(), cwd, cmd, workspace.DevinProcessEnv(s.workspace), parseRequestEnv(r))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -75,12 +79,16 @@ func (s *Server) handleTerminalStream(w http.ResponseWriter, r *http.Request) {
 
 	workspace.EnsureDNS()
 	cwd := s.resolveCWD(req.CWD)
-	s.appendLog("terminal stream: " + req.Command)
+	cmd := req.Command
+	if s.workspace != "" && s.workspace != "/workspace" {
+		cmd = strings.ReplaceAll(cmd, "/workspace", s.workspace)
+	}
+	s.appendLog("terminal stream: " + cmd)
 
 	result, err := executil.RunStreamingUntilGuest(
 		r.Context(),
 		cwd,
-		req.Command,
+		cmd,
 		workspace.DevinProcessEnv(s.workspace),
 		parseRequestEnv(r),
 		func(line executil.OutputLine) (bool, error) {

@@ -251,9 +251,7 @@ export class TaskService implements TaskServiceHost {
     const now = new Date().toISOString();
     const requested = input.agent ?? this.defaultAgent;
     const agent =
-      requested === "mock" && process.env.ALLOW_TEMPLATE_AGENT === "true"
-        ? "mock"
-        : "brain";
+      requested === "mock" || this.defaultAgent === "mock" ? "mock" : "brain";
     const explicitStack = resolveExplicitStackRuntime(input.runtime);
     const provisionalRuntime = resolveRuntimeForTask(
       agent,

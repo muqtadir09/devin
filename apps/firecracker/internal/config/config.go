@@ -38,7 +38,7 @@ type Config struct {
 func LoadFromEnv() Config {
 	return Config{
 		HostName:        envString("FIRECRACKER_HOST_NAME", "fc-local"),
-		Port:            envInt("FIRECRACKER_HOST_PORT", 9092),
+		Port:            envInt("FIRECRACKER_HOST_PORT", 9093),
 		DryRun:          envBool("FIRECRACKER_DRY_RUN", true),
 		RuntimeFallback: envString("RUNTIME_URL", "http://localhost:8081"),
 		PoolSize:        envInt("FIRECRACKER_POOL_SIZE", 1),
