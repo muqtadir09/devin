@@ -34,9 +34,11 @@ Traditional AI coding tools are constrained to text generation inside the develo
 
 ### Key Highlights
 - **Autonomous Reasoning & Planning**: Powered by the Brain harness (`@devin/brain`), combining prompt analysis with a structured tool-calling loop.
-- **Isolated Execution Plane (Devbox)**: Sub-second MicroVM snapshot restores powered by Firecracker and CNI networking, with native fallbacks for local development.
+- **Cross-Platform Compatibility (macOS & Linux)**: Run Devin locally and natively on macOS (Apple Silicon `arm64` & Intel `x86_64`) as well as Linux, with zero requirement for hardware KVM virtualization in local development.
+- **Isolated Execution Plane (Devbox)**: Sub-second MicroVM snapshot restores powered by Firecracker and CNI networking on Linux KVM, with transparent native dry-run fallbacks for local development.
 - **Real-Time Interactive UI**: Live streaming terminal, dynamic file tree, interactive diff viewer, and real-time virtual desktop browser via VNC.
 - **Enterprise-Grade Security**: Strict prompt injection and jailbreak defenses (`<untrusted>` wrappers) treating all external user inputs, tool outputs, and repo files as unprivileged data.
+- **Zero-Config 1-Click Dev Login**: Instant developer login built directly into the web UI—automatically gated by `NODE_ENV === "production"` so production bundles remain secure without requiring manual template copying or bundler alias hacks.
 - **Hybrid Deployment Models**: Runs seamlessly locally with zero-overhead dry-run mode, or scales to enterprise workloads on AWS EKS with dedicated EC2 KVM execution hosts.
 
 ---
@@ -81,9 +83,9 @@ Devin adopts a clean separation between the **Control Plane** (Web, API Server, 
              │  └───────────┬───────────┘                         │                │
              │              │                                     ▼                │
              │              │ Tool Execution        ┌───────────────────────────┐  │
-             │              │ Requests              │ Firecracker MicroVM Host  │  │
-             │              ▼                       │ • Golden Snapshot Restore │  │
-             │  ┌───────────────────────┐           │ • Isolated /workspace     │  │
+             │              │ Requests              │ Execution Sandbox         │  │
+             │              ▼                       │ • Linux: Firecracker KVM  │  │
+             │  ┌───────────────────────┐           │ • macOS: Local Workspace  │  │
              │  │ Tool Gateway (:9095)  │──────────►│ • Supervisor API (:8081) │  │
              │  │ • Go gRPC Bridge      │  gRPC     └───────────────────────────┘  │
              │  └───────────────────────┘                                          │
@@ -91,14 +93,27 @@ Devin adopts a clean separation between the **Control Plane** (Web, API Server, 
 ```
 
 ### Components & Responsibilities
-- **`apps/web`** (Port `3000`): Modern Next.js 16 interface with real-time task progress, file diff viewer, terminal emulator, and desktop VNC stream.
+- **`apps/web`** (Port `3000`): Modern Next.js 16 interface with real-time task progress, file diff viewer, terminal emulator, and desktop VNC stream. Includes built-in 1-click dev login.
 - **`apps/server`** (Port `8080`): Central backend gateway managing user sessions, Better-Auth authentication, database schema migrations, and event streaming.
 - **`apps/brain`** (Port `9092`): Autonomous LLM reasoning loop. Dispatches prompts to OpenAI (`gpt-4o-mini` / `gpt-4o`), determines if code execution is required, infers runtime requirements, and invokes coding tools.
 - **`apps/scheduler`** (Port `9091`): Manages task scheduling, queues (in-memory locally or AWS SQS in cloud), and microVM session persistence.
 - **`apps/orchestrator`** (Port `9090`): Go controller that provisions and reconciles sandbox instances either via Kubernetes CRDs or local dry-run HTTP.
 - **`apps/tool-gateway`** (Port `9095`): High-performance Go gRPC daemon translating high-level tool calls into low-level runtime commands.
-- **`apps/runtime`** (Port `8081`): In-guest Go supervisor acting as PID 1 inside the sandbox, exposing `/terminal`, `/files/*`, and `/git/*` APIs.
-- **`apps/firecracker`**: Host microVM manager utilizing Linux KVM and CNI networking for sub-second VM snapshot restoration.
+- **`apps/runtime`** (Port `8081`): In-guest Go supervisor acting as PID 1 inside the sandbox, exposing `/terminal`, `/files/*`, and `/git/*` APIs. On macOS, automatically proxies to local workspaces.
+- **`apps/firecracker`**: Host microVM manager utilizing Linux KVM and CNI networking for sub-second VM snapshot restoration (with non-Linux build stubs on macOS).
+
+---
+
+## Execution Modes: macOS vs Linux
+
+Devin is designed to run seamlessly in both local developer environments and enterprise cloud clusters:
+
+| Feature | macOS (Darwin arm64 / x86_64) | Linux (Ubuntu / Debian / Amazon Linux) | Cloud (AWS EKS / KVM) |
+|---|---|---|---|
+| **Execution Plane** | Local Workspace Dry-Run Mode | MicroVM or Local Dry-Run | Firecracker MicroVMs |
+| **Virtualization** | In-process supervisor (`/tmp/devin-workspace`) | Linux KVM (`/dev/kvm`) | EC2 bare-metal / `c7g` / `c6i` |
+| **Networking** | Localhost HTTP / gRPC bridge | CNI tap devices & iptables | CNI & VPC Bridge |
+| **Requirements** | Bun, Go, Node.js, Docker (Postgres) | Linux Kernel 5.10+, KVM, Docker | EKS Cluster, KVM Nodes, S3/SQS |
 
 ---
 
@@ -132,23 +147,25 @@ devin/
 ## Features
 
 - **End-to-End Autonomous Coding**: Submits prompts, analyzes repos, modifies source trees, runs builds, and verifies output.
+- **Cross-Platform macOS & Linux Support**: Native development on macOS (Apple Silicon arm64 / Intel) and Linux with zero virtualization overhead in local dry-run mode.
 - **Dynamic Stack Selection**: Intelligently detects and selects golden snapshot images for Next.js, Node.js, Go, Python, and Rust.
-- **Zero-Friction Local Development**: Full mock / dry-run modes enabling development on macOS/Windows without Linux KVM or AWS accounts.
+- **Zero-Friction Local Development**: Full mock / dry-run modes enabling development without Linux KVM or AWS accounts.
 - **Interactive VNC & Browser**: Real-time browser automation and virtual desktop capture via Xvfb and noVNC.
 - **Hardened Security Boundaries**:
   - Prompt injection prevention via delimiter enforcement (`<untrusted>` blocks).
   - Secret sanitization stripping tokens from persisted jobs and logs.
   - MicroVM isolation preventing guest access to host resources.
-- **1-Click Local Dev Login**: Instant local developer login bypassing external OAuth/email configuration.
+- **Zero-Config 1-Click Dev Login**: Instant developer bypass button in `apps/web` (automatically disabled in production when `NODE_ENV=production`) for immediate sign-in without external OAuth configuration.
 
 ---
 
 ## Prerequisites
 
+- **OS**: macOS (Apple Silicon `arm64` or Intel `x86_64`) or Linux (Ubuntu 22.04+ recommended)
 - **Bun**: `^1.2.3` (or `v1.4+`)
 - **Node.js**: `>= 18` (Node 20 or 22 recommended)
 - **Go**: `>= 1.22` (for orchestrator, tool gateway, and runtime supervisor)
-- **Docker**: For running the PostgreSQL database or containerized stack
+- **Docker**: For running PostgreSQL (`docker compose`) or containerized stack
 - **OpenAI API Key**: For Brain LLM task planning (`OPENAI_API_KEY`)
 
 ---
@@ -180,7 +197,13 @@ cp apps/runtime/.env.sample apps/runtime/.env
 
 Generate a local session secret and enable local dev login:
 ```bash
+# On macOS:
 sed -i '' "s/BETTER_AUTH_SECRET=/BETTER_AUTH_SECRET=$(openssl rand -hex 32)/" apps/server/.env
+
+# On Linux:
+sed -i "s/BETTER_AUTH_SECRET=/BETTER_AUTH_SECRET=$(openssl rand -hex 32)/" apps/server/.env
+
+# Enable 1-click dev login on the API server:
 echo "ALLOW_LOCAL_DEV_LOGIN=true" >> apps/server/.env
 ```
 
@@ -189,10 +212,7 @@ Add your `OPENAI_API_KEY` in `apps/brain/.env`:
 OPENAI_API_KEY=sk-...
 ```
 
-Enable the local developer login button in the web UI:
-```bash
-cp apps/web/components/auth/local-dev-login.local.example.tsx apps/web/components/auth/local-dev-login.local.tsx
-```
+> **Note**: The web interface automatically includes the **"Continue locally (dev)"** button in development mode. No manual file copying or alias configuration is required.
 
 ### 4. Run Database Migrations
 ```bash
@@ -200,12 +220,34 @@ bun run migrate
 ```
 
 ### 5. Launch the Development Stack
+You can start all services concurrently with Turborepo:
 ```bash
 bun run dev
 ```
 
+Or run individual services in separate terminals:
+```bash
+# Terminal 1: Orchestrator Controller
+cd apps/orchestrator && ./bin/orchestrator
+
+# Terminal 2: Runtime Supervisor (uses local workspace on macOS)
+RUNTIME_WORKSPACE=/tmp/devin-workspace ./apps/runtime/bin/runtime
+
+# Terminal 3: Scheduler Worker
+bun --cwd apps/scheduler dev
+
+# Terminal 4: Brain Engine
+bun --cwd apps/brain dev
+
+# Terminal 5: API Server
+bun --cwd apps/server dev
+
+# Terminal 6: Web UI
+bun --cwd apps/web dev
+```
+
 Open your browser:
-- **Web Interface**: `http://localhost:3000` (Click **"Local Dev Login"** to sign in instantly)
+- **Web Interface**: `http://localhost:3000` (Click **"Continue locally (dev)"** to sign in instantly)
 - **API Server**: `http://localhost:8080`
 - **Brain Engine**: `http://localhost:9092`
 
@@ -213,16 +255,16 @@ Open your browser:
 
 ## Testing & Quality Assurance
 
-Run the test suite and quality verification:
+Run the complete test suite and quality verification:
 
 ```bash
-# Run all unit and integration tests (159 passing)
+# Run all unit and integration tests (159 passing: 126 Bun tests + 33 Vitest tests)
 bun run test
 
 # Run TypeScript typechecks across all 26 packages
 bun run check-types
 
-# Run ESLint across web and UI packages
+# Run ESLint across packages (validated against Turborepo globalEnv)
 bun run lint
 
 # Build all packages and binaries
